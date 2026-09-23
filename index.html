@@ -32,17 +32,26 @@ const Q=[
 ];
 const W=['เพื่อนทำ PN แล้วผิวดีมาก แต่หนูไม่รู้ว่าตัวเองมีปัญหาอะไร แค่รู้สึกหน้าดูโทรม ช่วงนี้ทำงานหนัก นอนน้อย และไม่อยากบวมเพราะต้องเจอลูกค้าทุกวัน ถ้าเป็นพี่จะเลือกอะไรให้หนู?','อยากให้ผิวดีขึ้น แก้มก็ดูตอบนิดหน่อย กลัวเจ็บ และอีกประมาณ 2 สัปดาห์มีงานสำคัญ งบไม่มีปัญหา เอาตัวที่ดีที่สุดให้เลย'];
 let i=0,a=Array(30).fill('');const L=['A','B','C','D'];function e(x){return document.getElementById(x)}function prof(){return{firstName:e('firstName').value,lastName:e('lastName').value,nickname:e('nickname').value,branch:e('branch').value,role:e('role').value}}function save(){localStorage.setItem('PNRTB',JSON.stringify({i,a,p:prof()}))}function start(){if(Object.values(prof()).some(x=>!x.trim()))return alert('กรอกข้อมูลให้ครบ');e('start').classList.add('hide');e('exam').classList.remove('hide');render();save()}function render(){e('count').textContent=`ข้อ ${i+1}/30`;e('bar').style.width=((i+1)/30*100)+'%';let h='';if(i<28){h=`<h2>${i+1}. ${Q[i][0]}</h2>`;Q[i][1].forEach((x,j)=>h+=`<label class=o><input type=radio name=a value=${L[j]} ${a[i]===L[j]?'checked':''} onchange="a[${i}]=this.value;save()"><b>${L[j]}.</b> ${x}</label>`)}else h=`<h2>${i+1}. ${W[i-28]}</h2><textarea oninput="a[${i}]=this.value;save()" placeholder="ตอบเป็นประโยคที่ใช้คุยกับลูกค้าได้จริง">${a[i]}</textarea>`;e('card').innerHTML=h;e('next').textContent=i===29?'ส่งข้อสอบ':'ถัดไป'}function go(d){if(d>0&&!String(a[i]).trim())return alert('กรุณาตอบข้อนี้ก่อน');if(i===29&&d>0)return submit();i=Math.max(0,Math.min(29,i+d));render();save()}async function submit(){if(a.some(x=>!String(x).trim()))return alert('ยังตอบไม่ครบ');if(!confirm('ยืนยันส่งข้อสอบ? ส่งแล้วแก้ไม่ได้'))return;e('next').disabled=true;const p={action:'submitPNRetest',...prof(),answers:a,submissionId:'RT-'+Date.now()+'-'+Math.random().toString(36).slice(2)};try{const r=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p),redirect:'follow'});const o=await r.json();if(!o.success)throw Error(o.message);localStorage.removeItem('PNRTB');show(o)}catch(err){e('next').disabled=false;alert('ส่งไม่สำเร็จ: '+err.message+'\nคำตอบยังถูกเก็บไว้')}}function show(o){
+ const TH={
+  'Need Discovery':'การค้นหาความต้องการลูกค้า',
+  'Product Matching':'การเลือกผลิตภัณฑ์ให้เหมาะกับลูกค้า',
+  'Communication':'การสื่อสารกับลูกค้า',
+  'Sales & Promotion':'การขายและโปรโมชั่น',
+  'Safety & Scope':'ความปลอดภัยและขอบเขตการให้ข้อมูล',
+  'Integrated Case':'การประยุกต์ใช้กับเคสจริง'
+ };
+ const th=x=>TH[String(x).trim()]||String(x);
  e('exam').classList.add('hide');e('result').classList.remove('hide');
  const passed=o.result==='ผ่าน';
  let h=`<h1>ผลสอบ PN RETEST B</h1><div class="resultBox ${passed?'resultPass':'resultFail'}"><div style="font-size:22px;font-weight:800">${passed?'✓ ผ่าน':'✕ ไม่ผ่าน'}</div><div class="scoreBig">${o.totalScore}/38</div><div style="font-size:22px;font-weight:700">${o.percent}%</div><div class="muted">เกณฑ์ผ่าน 80%</div></div>`;
  const lows=[];
- if(o.categoryPct){h+='<h3>คะแนนแยกหมวด</h3>';for(const[k,v0]of Object.entries(o.categoryPct)){const v=Number(v0);if(v<80)lows.push(k);h+=`<div class="cat ${v<80?'catLow':''}"><b>${k}</b>: ${v0}% ${v<80?'• ควรทบทวน':''}</div>`}}
+ if(o.categoryPct){h+='<h3>คะแนนแยกหมวด</h3>';for(const[k,v0]of Object.entries(o.categoryPct)){const v=Number(v0);if(v<80)lows.push(k);h+=`<div class="cat ${v<80?'catLow':''}"><b>${th(k)}</b>: ${v0}% ${v<80?'• ควรทบทวน':''}</div>`}}
  let review=[];
  if(Array.isArray(o.reviewTopics)) review=o.reviewTopics.filter(Boolean);
  else if(typeof o.reviewTopics==='string'&&o.reviewTopics.trim()) review=o.reviewTopics.split(/[,|\n]+/).map(x=>x.trim()).filter(Boolean);
  if(!review.length) review=lows;
  h+='<div class=reviewBox><h3>แนะนำให้ทบทวน</h3>';
- if(review.length) h+=`<div>${[...new Set(review)].map(x=>'• '+x).join('<br>')}</div>`;
+ if(review.length) h+=`<div>${[...new Set(review)].map(x=>'• '+th(x)).join('<br>')}</div>`;
  else h+='<div class=ok>ผ่านเกณฑ์และไม่พบหมวดที่ต้องทบทวนเป็นพิเศษ</div>';
  h+='</div>';
  if(o.wrongQuestions?.length){h+='<h3>ข้อที่ตอบผิดและควรทบทวน</h3>';o.wrongQuestions.forEach(w=>{let x=Q[w.question-1];h+=`<div class=wrong><b>ข้อ ${w.question}</b><br><b>คำตอบที่เลือก:</b> ${w.selected}<br><b>คำตอบที่ถูก:</b> ${w.correct}<br><b>เหตุผล:</b> ${x?x[2]:''}<br><b>นำไปใช้จริง:</b> ${x?x[3]:''}</div>`})}else h+='<p class=ok>✓ Q1–Q28 ถูกทั้งหมด</p>';
