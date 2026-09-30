@@ -119,4 +119,27 @@ function show(o,saveConfirmed){
  h+='<p class=muted>คำตอบข้อ 29–30 ถูกบันทึกและประเมินตาม Rubric แล้ว</p>';
  e('result').innerHTML=h;window.scrollTo({top:0,behavior:'smooth'})
 }try{let s=JSON.parse(localStorage.getItem('PNRTB'));if(s){Object.entries(s.p||{}).forEach(([k,v])=>{if(e(k))e(k).value=v});i=s.i||0;a=s.a||a;submissionId=s.submissionId||'';qOrder=Array.isArray(s.qOrder)&&s.qOrder.length===30?s.qOrder:[];optOrder=s.optOrder||{};if(a.some(x=>x)){if(!submissionId)newSubmissionId();if(!qOrder.length)makeOrder();e('start').classList.add('hide');e('exam').classList.remove('hide');render();save()}}}catch(_){}
+// Basic exam-content protection: discourages copy/search shortcuts without affecting typing in written answers.
+(function protectExamContent(){
+  const isEditable = el => el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT');
+  document.addEventListener('contextmenu', ev => {
+    if (!isEditable(ev.target)) ev.preventDefault();
+  });
+  document.addEventListener('copy', ev => {
+    if (!isEditable(ev.target)) ev.preventDefault();
+  });
+  document.addEventListener('cut', ev => {
+    if (!isEditable(ev.target)) ev.preventDefault();
+  });
+  document.addEventListener('selectstart', ev => {
+    if (!isEditable(ev.target)) ev.preventDefault();
+  });
+  document.addEventListener('dragstart', ev => ev.preventDefault());
+  document.addEventListener('keydown', ev => {
+    if (isEditable(ev.target)) return; // written-answer fields remain usable
+    const k = ev.key.toLowerCase();
+    if ((ev.ctrlKey || ev.metaKey) && ['c','a','u','s','p'].includes(k)) ev.preventDefault();
+    if (ev.key === 'F12') ev.preventDefault();
+  });
+})();
 </script></body></html>
