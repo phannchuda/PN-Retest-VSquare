@@ -33,13 +33,28 @@ const Q=[
 const W=['เพื่อนทำ PN แล้วผิวดีมาก แต่หนูไม่รู้ว่าตัวเองมีปัญหาอะไร แค่รู้สึกหน้าดูโทรม ช่วงนี้ทำงานหนัก นอนน้อย และไม่อยากบวมเพราะต้องเจอลูกค้าทุกวัน ถ้าเป็นพี่จะเลือกอะไรให้หนู?','อยากให้ผิวดีขึ้น แก้มก็ดูตอบนิดหน่อย กลัวเจ็บ และอีกประมาณ 2 สัปดาห์มีงานสำคัญ งบไม่มีปัญหา เอาตัวที่ดีที่สุดให้เลย'];
 let i=0,a=Array(30).fill('');
 const L=['A','B','C','D'];
-let qOrder=[],optOrder={};
+let qOrder=[],optOrder={},submissionId='';
 function e(x){return document.getElementById(x)}
 function prof(){return{firstName:e('firstName').value,lastName:e('lastName').value,nickname:e('nickname').value,branch:e('branch').value,role:e('role').value}}
-function shuffle(arr){for(let x=arr.length-1;x>0;x--){const j=Math.floor(Math.random()*(x+1));[arr[x],arr[j]]=[arr[j],arr[x]]}return arr}
-function makeOrder(){qOrder=shuffle([...Array(28).keys()]);optOrder={};qOrder.forEach(q=>optOrder[q]=shuffle([0,1,2,3]));qOrder.push(28,29)}
-function save(){localStorage.setItem('PNRTB',JSON.stringify({i,a,p:prof(),qOrder,optOrder}))}
-function start(){if(Object.values(prof()).some(x=>!x.trim()))return alert('กรอกข้อมูลให้ครบ');if(!qOrder.length)makeOrder();e('start').classList.add('hide');e('exam').classList.remove('hide');render();save()}
+function newSubmissionId(){
+  if(submissionId) return submissionId;
+  const bytes=new Uint32Array(2);
+  if(window.crypto&&crypto.getRandomValues) crypto.getRandomValues(bytes); else {bytes[0]=Date.now()>>>0;bytes[1]=Math.floor(Math.random()*0xffffffff)}
+  submissionId='RT-'+Date.now().toString(36)+'-'+bytes[0].toString(36)+bytes[1].toString(36);
+  return submissionId;
+}
+function hashSeed(str){let h=2166136261>>>0;for(let n=0;n<str.length;n++){h^=str.charCodeAt(n);h=Math.imul(h,16777619)}return h>>>0}
+function seededRng(seed){let x=seed>>>0;return function(){x+=0x6D2B79F5;let t=x;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
+function shuffleWith(arr,rng){for(let x=arr.length-1;x>0;x--){const j=Math.floor(rng()*(x+1));[arr[x],arr[j]]=[arr[j],arr[x]]}return arr}
+function makeOrder(){
+  const sid=newSubmissionId();
+  const rng=seededRng(hashSeed(sid));
+  qOrder=shuffleWith([...Array(28).keys()],rng);
+  optOrder={};qOrder.forEach(q=>optOrder[q]=shuffleWith([0,1,2,3],rng));
+  qOrder.push(28,29);
+}
+function save(){localStorage.setItem('PNRTB',JSON.stringify({i,a,p:prof(),qOrder,optOrder,submissionId}))}
+function start(){if(Object.values(prof()).some(x=>!x.trim()))return alert('กรอกข้อมูลให้ครบ');newSubmissionId();if(!qOrder.length)makeOrder();e('start').classList.add('hide');e('exam').classList.remove('hide');render();save()}
 function render(){
  e('count').textContent=`ข้อ ${i+1}/30`;e('bar').style.width=((i+1)/30*100)+'%';let h='';
  const qid=qOrder[i];
@@ -60,7 +75,8 @@ async function submit(){
  if(a.some(x=>!String(x).trim()))return alert('ยังตอบไม่ครบ');
  if(!confirm('ยืนยันส่งข้อสอบ? ส่งแล้วแก้ไม่ได้'))return;
  e('next').disabled=true;
- const submissionId='RT-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+ newSubmissionId();
+ save();
  const p={action:'submitPNRetest',...prof(),answers:a,submissionId};
  e('exam').classList.add('hide');e('result').classList.remove('hide');
  e('result').innerHTML='<h1>กำลังส่งข้อสอบ</h1><div class="saving"><b>⏳ กำลังตรวจและบันทึกผล</b><br>กรุณาอย่าปิดหรือรีเฟรชหน้านี้ จนกว่าจะขึ้นข้อความว่า “บันทึกผลสอบสำเร็จแล้ว”</div>';
@@ -102,5 +118,5 @@ function show(o,saveConfirmed){
  if(o.wrongQuestions?.length){h+='<h3>ข้อที่ตอบผิดและควรทบทวน</h3>';o.wrongQuestions.forEach(w=>{let x=Q[w.question-1];const shown=qOrder.indexOf(w.question-1)+1;const si=L.indexOf(String(w.selected||'').toUpperCase());const ci=L.indexOf(String(w.correct||'').toUpperCase());const st=x&&si>=0?x[1][si]:w.selected;const ct=x&&ci>=0?x[1][ci]:w.correct;h+=`<div class=wrong><b>ข้อ ${shown>0?shown:w.question}</b><br><b>คำตอบที่เลือก:</b> ${st}<br><b>คำตอบที่ถูก:</b> ${ct}<br><b>เหตุผล:</b> ${x?x[2]:''}<br><b>นำไปใช้จริง:</b> ${x?x[3]:''}</div>`})}else h+='<p class=ok>✓ ข้อปรนัยถูกทั้งหมด</p>';
  h+='<p class=muted>คำตอบข้อ 29–30 ถูกบันทึกและประเมินตาม Rubric แล้ว</p>';
  e('result').innerHTML=h;window.scrollTo({top:0,behavior:'smooth'})
-}try{let s=JSON.parse(localStorage.getItem('PNRTB'));if(s){Object.entries(s.p||{}).forEach(([k,v])=>{if(e(k))e(k).value=v});i=s.i||0;a=s.a||a;qOrder=Array.isArray(s.qOrder)&&s.qOrder.length===30?s.qOrder:[];optOrder=s.optOrder||{};if(a.some(x=>x)){if(!qOrder.length)makeOrder();e('start').classList.add('hide');e('exam').classList.remove('hide');render();save()}}}catch(_){}
+}try{let s=JSON.parse(localStorage.getItem('PNRTB'));if(s){Object.entries(s.p||{}).forEach(([k,v])=>{if(e(k))e(k).value=v});i=s.i||0;a=s.a||a;submissionId=s.submissionId||'';qOrder=Array.isArray(s.qOrder)&&s.qOrder.length===30?s.qOrder:[];optOrder=s.optOrder||{};if(a.some(x=>x)){if(!submissionId)newSubmissionId();if(!qOrder.length)makeOrder();e('start').classList.add('hide');e('exam').classList.remove('hide');render();save()}}}catch(_){}
 </script></body></html>
